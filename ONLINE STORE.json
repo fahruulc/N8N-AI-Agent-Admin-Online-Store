@@ -1,0 +1,623 @@
+{
+  "name": "ONLINE STORE",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "4c6d07a9-910f-406e-bbe7-582612c14481",
+      "name": "Telegram Trigger",
+      "webhookId": "6c921ce7-13aa-40ae-960c-1952ad3bfa5d",
+      "credentials": {
+        "telegramApi": {
+          "id": "BRZkXEvhmS1KxNdb",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "=Anda adalah seorang ahli admin management online store dengan pengalaman bekerja lebih dari 20 tahun. Tugas utama Anda adalah membantu saya dalam mengelola data pesanan toko online, termasuk pencatatan pesanan masuk, perubahan status (dikirim, diterima, dikembalikan, dibatalkan), pengambilan laporan, dan penghapusan pesanan.\n\nAnda memiliki akses ke data pesanan dalam sebuah spreadsheet dengan kolom berikut:\norder ID, tanggal pesanan, nama barang, kuantitas, alamat pembeli, nama pembeli, total harga, metode pembayaran, status pesanan, nomor resi, nama kurir, waktu dikirim, waktu diterima, alasan pengembalian.\n\nAnda memiliki 4 tool yang dapat Anda gunakan:\n\n1. 'AddData':\n   Kapan digunakan: Untuk mencatat pesanan baru.\n   Data yang dibutuhkan: tanggal pesanan, nama barang, kuantitas, alamat pembeli, nama pembeli, total harga, metode pembayaran.\n   Data tambahan yang perlu Anda buat: Otomatis Buat order ID unik dengan format: ORD-<yyyyMMddHHmmss>-<4hurufAcak>, Contoh: ORD-20250728112230-ABCD. Setel status pesanan awal menjadi \"Baru\". Pastikan kolom lain seperti nomor resi, nama kurir, waktu dikirim, waktu diterima, alasan pengembalian diisi kosong atau null saat penambahan awal.\n   Output setelah berhasil: Konfirmasi penambahan pesanan dan berikan order ID yang baru dibuat.\n   Output jika gagal: Pesan gagal yang sopan dengan penyebab spesifik (misal: \"Data pesanan tidak lengkap.\").\n\n2. 'UpdateData'\nTujuan: Memodifikasi informasi atau status pesanan yang sudah ada.\nData Wajib: order ID (sebagai identifikasi utama) dan kolom-kolom spesifik yang ingin diubah.\nAlur Logika Internal AI Agent (Tindakan Tanpa Narasi):\nPrioritas: Selalu gunakan order ID untuk menemukan data pesanan yang relevan.\nUntuk perubahan status \"Dikirim\": Panggil UpdateData dengan order ID, nomor resi, nama kurir, waktu dikirim (dan pastikan data lama lainnya tetap ada, ini adalah tanggung jawab tool UpdateData untuk mempertahankan kolom lain atau AI Agent harus mengambil data lengkap dulu sebelum update status. Untuk amannya, kita akan berlakukan cara kedua.)\nUntuk perubahan status \"Diterima\": Panggil UpdateData dengan order ID, waktu diterima. (Sama, AI Agent harus mengambil data lengkap dulu).\nUntuk perubahan status \"Dikembalikan\": Panggil UpdateData dengan order ID, alasan pengembalian. (Sama, AI Agent harus mengambil data lengkap dulu).\nUntuk perubahan status \"Dibatalkan\": Panggil UpdateData dengan order ID. (Sama, AI Agent harus mengambil data lengkap dulu).\nUNTUK SEMUA JENIS UPDATE (TERMASUK PERUBAHAN STATUS DAN DETAIL LAINNYA):\nPENTING: Panggil 'GetData' terlebih dahulu menggunakan order ID yang diberikan oleh pengguna.\nDapatkan seluruh data pesanan yang ada dari hasil GetData (misalnya: tanggal pesanan, nama barang, kuantitas, alamat pembeli, nama pembeli, total harga, metode pembayaran, status pesanan, nomor resi, nama kurir, waktu dikirim, waktu diterima, alasan pengembalian).\nGabungkan data ini: Ambil data lengkap yang didapat dari GetData, lalu timpa/perbarui hanya kolom-kolom yang diminta pengguna untuk diubah. Kolom lain yang tidak disebutkan akan tetap menggunakan nilai dari GetData.\nKirimkan SELURUH payload data pesanan yang SUDAH LENGKAP dan TERBARUI ini ke tool UpdateData.\nOutput Setelah Berhasil: \"Data pesanan dengan Order ID [Order ID] berhasil diperbarui.\"\nOutput Jika Gagal: \"Maaf, pembaruan pesanan gagal. Order ID tidak ditemukan.\" atau \"Data update tidak valid. Mohon pastikan Order ID benar dan informasi yang diberikan valid.\"\n\n3. 'GetData'\nAlur Logika Internal AI Agent:\nJika pengguna meminta laporan/daftar, selalu gunakan tool ini.\nSajikan data yang relevan dengan format terstruktur.\nOutput Setelah Berhasil:\nOrder ID: <Order ID>\nTanggal Pesanan: <tanggal pesanan>\nNama Barang: <nama barang>\nKuantitas: <kuantitas>\nAlamat Pembeli: <alamat pembeli>\nNama Pembeli: <nama pembeli>\nTotal Harga: <total harga>\nMetode Pembayaran: <metode pembayaran>\nStatus Pesanan: <status pesanan>\nNomor Resi: <nomor resi>\nNama Kurir: <nama kurir>\nWaktu Dikirim: <waktu dikirim>\nWaktu Diterima: <waktu diterima>\nAlasan Pengembalian: <alasan pengembalian>\n---\nJika tidak ada data: \"Tidak ada data pesanan yang ditemukan.\"\nOutput Jika Gagal: \"Maaf, gagal mengambil data pesanan. Mohon coba lagi nanti.\"\n\n4. 'DeleteData'\nAlur Logika Internal AI Agent:\nPanggil 'GetData' dengan order ID dari pengguna.\nJika 'GetData' menemukan pesanan: Lanjutkan untuk memanggil 'DeleteData' dengan order ID tersebut.\nJika 'GetData' tidak menemukan pesanan: Langsung berikan respons gagal.\nOutput Setelah Berhasil: \"Pesanan dengan Order ID [Order ID] berhasil dihapus/dibatalkan.\"\nOutput Jika Gagal: \"Maaf, pesanan dengan Order ID [Order ID] tidak ditemukan. Gagal menghapus pesanan.\" atau \"Terjadi kesalahan saat mencoba menghapus data.\"\n\nInstruksi Umum untuk Respons:\nSetelah berhasil menjalankan tool, berikan output yang jelas, ringkas, dan sesuai dengan aksi yang telah dilakukan.\nJika tool gagal dijalankan atau data yang diperlukan tidak ada/tidak valid, berikan output pesan gagal yang sopan, sertakan penyebab kegagalan tersebut, dan sarankan cara untuk memperbaikinya (misal: \"Pastikan Order ID sudah benar\", \"Sertakan semua informasi yang dibutuhkan\").\nSelalu berinteraksi dengan pengguna dalam bahasa yang mudah dimengerti."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        384,
+        0
+      ],
+      "id": "614c4cc7-716a-46f6-806e-f9784322d299",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": {
+          "maxOutputTokens": 1000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        224,
+        224
+      ],
+      "id": "ee6443b4-261a-4b7a-baae-9d551e6edea1",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "CybgOQTFRYCALxhd",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "185iUKH4zcR4BYg2FHnIAMB24e02jsR537pl9ItjnKdw",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/185iUKH4zcR4BYg2FHnIAMB24e02jsR537pl9ItjnKdw/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "order ID": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('order_ID', ``, 'string') }}",
+            "tanggal pesanan": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('tanggal_pesanan', ``, 'string') }}",
+            "nama barang": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('nama_barang', ``, 'string') }}",
+            "kuantitas": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('kuantitas', ``, 'string') }}",
+            "alamat pembeli": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('alamat_pembeli', ``, 'string') }}",
+            "nama pembeli": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('nama_pembeli', ``, 'string') }}",
+            "metode pembayaran": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('metode_pembayaran', ``, 'string') }}",
+            "status pesanan": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('status_pesanan', ``, 'string') }}",
+            "nomor resi": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('nomor_resi', ``, 'string') }}",
+            "nama kurir": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('nama_kurir', ``, 'string') }}",
+            "waktu dikirim": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('waktu_dikirim', ``, 'string') }}",
+            "waktu diterima": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('waktu_diterima', ``, 'string') }}",
+            "alasan pengembalian": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('alasan_pengembalian', ``, 'string') }}",
+            "total harga": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('total_harga', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "order ID",
+              "displayName": "order ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tanggal pesanan",
+              "displayName": "tanggal pesanan",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nama barang",
+              "displayName": "nama barang",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "kuantitas",
+              "displayName": "kuantitas",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "alamat pembeli",
+              "displayName": "alamat pembeli",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nama pembeli",
+              "displayName": "nama pembeli",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total harga",
+              "displayName": "total harga",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "metode pembayaran",
+              "displayName": "metode pembayaran",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status pesanan",
+              "displayName": "status pesanan",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nomor resi",
+              "displayName": "nomor resi",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nama kurir",
+              "displayName": "nama kurir",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "waktu dikirim",
+              "displayName": "waktu dikirim",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "waktu diterima",
+              "displayName": "waktu diterima",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "alasan pengembalian",
+              "displayName": "alasan pengembalian",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.6,
+      "position": [
+        352,
+        224
+      ],
+      "id": "29a4e8b7-2fe2-4462-9468-4120fc1fd858",
+      "name": "AddData",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "vWujFlxS9L9ZDY5p",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "185iUKH4zcR4BYg2FHnIAMB24e02jsR537pl9ItjnKdw",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/185iUKH4zcR4BYg2FHnIAMB24e02jsR537pl9ItjnKdw/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "order ID": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('order_ID__using_to_match_', ``, 'string') }}",
+            "tanggal pesanan": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('tanggal_pesanan', ``, 'string') }}",
+            "nama barang": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('nama_barang', ``, 'string') }}",
+            "kuantitas": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('kuantitas', ``, 'string') }}",
+            "alamat pembeli": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('alamat_pembeli', ``, 'string') }}",
+            "nama pembeli": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('nama_pembeli', ``, 'string') }}",
+            "total harga": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('total_harga', ``, 'string') }}",
+            "metode pembayaran": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('metode_pembayaran', ``, 'string') }}",
+            "status pesanan": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('status_pesanan', ``, 'string') }}",
+            "nomor resi": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('nomor_resi', ``, 'string') }}",
+            "nama kurir": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('nama_kurir', ``, 'string') }}",
+            "waktu dikirim": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('waktu_dikirim', ``, 'string') }}",
+            "waktu diterima": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('waktu_diterima', ``, 'string') }}",
+            "alasan pengembalian": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('alasan_pengembalian', ``, 'string') }}"
+          },
+          "matchingColumns": [
+            "order ID"
+          ],
+          "schema": [
+            {
+              "id": "order ID",
+              "displayName": "order ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "tanggal pesanan",
+              "displayName": "tanggal pesanan",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nama barang",
+              "displayName": "nama barang",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "kuantitas",
+              "displayName": "kuantitas",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "alamat pembeli",
+              "displayName": "alamat pembeli",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nama pembeli",
+              "displayName": "nama pembeli",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total harga",
+              "displayName": "total harga",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "metode pembayaran",
+              "displayName": "metode pembayaran",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status pesanan",
+              "displayName": "status pesanan",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nomor resi",
+              "displayName": "nomor resi",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nama kurir",
+              "displayName": "nama kurir",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "waktu dikirim",
+              "displayName": "waktu dikirim",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "waktu diterima",
+              "displayName": "waktu diterima",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "alasan pengembalian",
+              "displayName": "alasan pengembalian",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.6,
+      "position": [
+        480,
+        224
+      ],
+      "id": "1524df77-4b60-488c-b0e8-8bd55de0d4ff",
+      "name": "UpdateData",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "vWujFlxS9L9ZDY5p",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        944,
+        0
+      ],
+      "id": "a37643e5-8c09-4ecc-880c-878ac68be3a1",
+      "name": "SendResponse",
+      "webhookId": "38abd4e1-c2ea-4d1f-bb43-8122ffc693fa",
+      "credentials": {
+        "telegramApi": {
+          "id": "BRZkXEvhmS1KxNdb",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "documentId": {
+          "__rl": true,
+          "value": "185iUKH4zcR4BYg2FHnIAMB24e02jsR537pl9ItjnKdw",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/185iUKH4zcR4BYg2FHnIAMB24e02jsR537pl9ItjnKdw/edit#gid=0"
+        },
+        "startIndex": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start_Row_Number', ``, 'number') }}",
+        "numberToDelete": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Number_of_Rows_to_Delete', ``, 'number') }}"
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.6,
+      "position": [
+        608,
+        224
+      ],
+      "id": "2e3a8cd3-c4f7-40f3-9f68-cc1b0290aac4",
+      "name": "DeleteData",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "vWujFlxS9L9ZDY5p",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "185iUKH4zcR4BYg2FHnIAMB24e02jsR537pl9ItjnKdw",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/185iUKH4zcR4BYg2FHnIAMB24e02jsR537pl9ItjnKdw/edit#gid=0"
+        },
+        "combineFilters": "OR",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.6,
+      "position": [
+        736,
+        224
+      ],
+      "id": "7104f512-eec7-4d5b-8eca-362c382e23bc",
+      "name": "GetData",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "vWujFlxS9L9ZDY5p",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AddData": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "SendResponse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UpdateData": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeleteData": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetData": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "bbb9c851-109d-4463-880b-6e4be66fa64f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1ef395c969a07a12d732a84bc189542686fe9d4a4764919a762d9b2bcb909854"
+  },
+  "id": "tK4s8E2dAVCpbMGv",
+  "tags": []
+}
